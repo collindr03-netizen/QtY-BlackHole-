@@ -214,7 +214,7 @@ Java_com_example_telemetry_TelemetryBridge_getNativeTelemetryPayload(
     jmethodID constructor = env->GetMethodID(
         payload_class,
         "<init>",
-        "(JDDJDDDDDDDDDLjava/lang/String;ZLjava/lang/String;)V"
+        "(JDDJDDDDDDDDLjava/lang/String;ZLjava/lang/String;)V"
     );
     if (!constructor) return nullptr;
 
