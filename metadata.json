@@ -1,0 +1,6 @@
+{
+  "name": "QtY 64",
+  "description": "High-precision sub-18-second quantitative telemetry HUD and Dual-AI directional gating platform for Bitcoin micro-market analysis, incorporating native NDK math engines and high-reasoning Gemini 3.1 hybrid evaluation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
