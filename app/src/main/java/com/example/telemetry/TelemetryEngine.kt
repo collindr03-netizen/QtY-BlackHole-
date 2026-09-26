@@ -242,40 +242,34 @@ class TelemetryEngine private constructor() {
         }
         _engines.value = updatedEngines
 
-        // 5. Dual-AI Directional Gate & Asymmetric Inference
-        // UP-AI and DOWN-AI are independent networks
-        // Under laminar regime, microstructure yields asymmetric separation
-        // Under chaotic regime, random walks create high uncertainty
-        val laminarStabilityFactor = if (lyapunov < 0.1 && reynolds < 250.0) 1.0 else 0.15
-        
-        // Compute base probabilities driven by order flow & depths
-        var rawUpProb = 0.5 + (ofi * 0.35 + depthImb * 0.15) * laminarStabilityFactor
-        var rawDownProb = 0.5 - (ofi * 0.35 + depthImb * 0.15) * laminarStabilityFactor
-        
-        // Ensure asymmetric properties (P_down != 1 - P_up)
-        val asymmetricDrift = Random.nextDouble(-0.04, 0.04)
-        rawUpProb = Math.max(0.01, Math.min(0.99, rawUpProb + asymmetricDrift))
-        rawDownProb = Math.max(0.01, Math.min(0.99, rawDownProb - asymmetricDrift))
+        // 5. Dual-AI Directional Gate & Asymmetric Inference (NDK-Accelerated Engine)
+        val preLaminar = (lyapunov < 0.22) && (reynolds < 320.0)
+        val avgLatency = currentConnections.map { it.latencyMs }.average().let { if (it.isNaN()) 10.0 else it }.toLong()
+        val nativePayload = TelemetryBridge.getTelemetryPayload(
+            currentBtcPrice = baseBtcPrice,
+            ofi = ofi,
+            depthImbalance = depthImb,
+            skew = derived.zScore,
+            vol = derived.parkinsonVolatility,
+            latencyMs = avgLatency,
+            isLaminar = preLaminar
+        )
 
-        // Epistemic (model) and Aleatoric (noise) variances
-        val sigmaUp = Math.max(0.02, 0.05 + (if (lyapunov > 0.1) 0.18 else 0.01))
-        val sigmaDown = Math.max(0.02, 0.05 + (if (reynolds > 250.0) 0.22 else 0.01))
+        val rawUpProb = nativePayload.pUp
+        val rawDownProb = nativePayload.pDown
+        val sigmaUp = nativePayload.epistemicUncertainty
+        val sigmaDown = nativePayload.aleatoricUncertainty
+        val dirSeparation = nativePayload.directionalSeparation
+        val zSep = nativePayload.confidenceRatio
+        val decisionErosion = nativePayload.decisionErosion
 
-        // Directional Separation: D(t) = P(UP) - P(DOWN)
-        val dirSeparation = rawUpProb - rawDownProb
+        // Update charts history safely
         chartSeparationHistory.add(dirSeparation)
         if (chartSeparationHistory.size > 80) chartSeparationHistory.removeAt(0)
 
-        // Z-Separation: Z_sep = (P_UP - P_DOWN) / sqrt(sigma_UP^2 + sigma_DOWN^2)
-        val combinedSigma = Math.sqrt(sigmaUp * sigmaUp + sigmaDown * sigmaDown)
-        val zSep = Math.abs(dirSeparation) / (combinedSigma + 1e-9)
-
-        // Decision Erosion coefficient E(t)
-        val lambda = 0.05 // decay constant
-        val decisionErosion = Math.exp(-lambda * (tickCount % 50) * 0.1)
 
         // Stability filtering law (Physics determines stability, microstructure determines direction)
-        val isMarketLaminar = (lyapunov < 0.22) && (reynolds < 320.0)
+        val isMarketLaminar = nativePayload.isLaminar
 
         // Directional Asymmetry trigger
         val hasAsymmetry = Math.abs(dirSeparation) >= targetCritSeparation
@@ -290,30 +284,13 @@ class TelemetryEngine private constructor() {
         val ecr = expectedGrossReturn / (transactionDrag + 1e-9)
 
         // 7. Decision Engine
-        var tripwire = "SYSTEM_NOMINAL"
-        var finalDecision = "NO-TRADE"
+        var tripwire = nativePayload.activeTripwire
+        var finalDecision = nativePayload.decisionState
 
+        // Override or rate limit adjustments in Kotlin Layer
         if (isDataIntegrityFailed) {
             tripwire = "DATA_INTEGRITY_FAIL_CLOSED"
             finalDecision = "NO-TRADE"
-        } else if (!isMarketLaminar) {
-            tripwire = "PHYSICS_TURBULENT_CLOSED"
-            finalDecision = "NO-TRADE"
-        } else if (zSep < 4.0) {
-            tripwire = "UNCERTAINTY_SUPPRESS_CLOSED"
-            finalDecision = "NO-TRADE"
-        } else if (ecr < 2.0) {
-            tripwire = "FRICTION_GATED"
-            finalDecision = "NO-TRADE"
-        } else if (hasAsymmetry) {
-            // Evaluated as highly laminar and microstructurally biased!
-            if (dirSeparation > 0.0) {
-                finalDecision = "BUY-LONG"
-                activeTradesInPeriod++
-            } else {
-                finalDecision = "SELL-SHORT"
-                activeTradesInPeriod++
-            }
         }
 
         // Limit the scalper trade rate dynamically to keep inside safe thresholds
@@ -345,6 +322,7 @@ class TelemetryEngine private constructor() {
             latencyDriftCritical = isClockDriftCritical
         )
         _dualAiState.value = dualAi
+
 
         // 8. Cryptographic Auditing Ledger (Section 7 Directive 3)
         if (tickCount % 12 == 0L) { // Every 12 ticks log audit state

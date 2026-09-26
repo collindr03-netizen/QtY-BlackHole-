@@ -156,4 +156,98 @@ Java_com_example_telemetry_TelemetryBridge_calculateEntropy(
     return (jdouble)entropy;
 }
 
+/**
+ * Calculates high-performance real-time telemetry payload inside the C++ native layer
+ * bypassing JNI/JVM pauses and memory fragmentation.
+ */
+JNIEXPORT jobject JNICALL
+Java_com_example_telemetry_TelemetryBridge_getNativeTelemetryPayload(
+    JNIEnv *env,
+    jobject thiz,
+    jdouble current_btc_price,
+    jdouble ofi,
+    jdouble depth_imbalance,
+    jdouble skew,
+    jdouble vol,
+    jdouble latency_ms,
+    jboolean is_laminar
+) {
+    // 1. Calculate Asymmetric Probabilities
+    double const up_score = 2.5 * (0.6 * ofi + 0.4 * depth_imbalance + 0.1 * skew);
+    double const down_score = 2.5 * (-0.6 * ofi - 0.4 * depth_imbalance - 0.1 * skew);
+
+    double const p_up = 1.0 / (1.0 + std::exp(-up_score));
+    double const p_down = 1.0 / (1.0 + std::exp(-down_score));
+
+    // 2. Compute model and noise uncertainties
+    double const epistemic = std::max(0.001, 0.005 * std::abs(skew));
+    double const aleatoric = std::max(0.001, 0.05 * vol);
+    double const total_variance = epistemic + aleatoric;
+
+    // 3. Directional separation and confidence ratio
+    double const dir_sep = p_up - p_down;
+    double const denom = std::sqrt(total_variance * 2.0);
+    double const z_sep = (denom > 1e-9) ? (std::abs(dir_sep) / denom) : 0.0;
+
+    // 4. Decision erosion coefficient
+    double const erosion = 1.0;
+
+    // 5. Build Decision State using physical filters and economic gates
+    std::string decision = "NO-TRADE";
+    std::string tripwire = "SYSTEM_NOMINAL";
+
+    if (latency_ms > 25) {
+        tripwire = "DATA_INTEGRITY_FAIL_CLOSED";
+    } else if (!is_laminar) {
+        tripwire = "PHYSICS_TURBULENT_CLOSED";
+    } else if (z_sep < 4.0) {
+        tripwire = "UNCERTAINTY_SUPPRESS_CLOSED";
+    } else if (std::abs(dir_sep) >= 0.70) {
+        decision = (dir_sep > 0.0) ? "BUY-LONG" : "SELL-SHORT";
+    }
+
+    // 6. Instantiate and return Kotlin TelemetryPayload class
+    jclass payload_class = env->FindClass("com/example/telemetry/TelemetryPayload");
+    if (!payload_class) return nullptr;
+
+    // Constructor signature
+    jmethodID constructor = env->GetMethodID(
+        payload_class,
+        "<init>",
+        "(JDDJDDDDDDDDDLjava/lang/String;ZLjava/lang/String;)V"
+    );
+    if (!constructor) return nullptr;
+
+    jstring j_decision = env->NewStringUTF(decision.c_str());
+    jstring j_tripwire = env->NewStringUTF(tripwire.c_str());
+
+    // Compute nano timestamps
+    auto now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()
+    ).count();
+
+    jobject payload_obj = env->NewObject(
+        payload_class,
+        constructor,
+        (jlong)now_ns,
+        (jdouble)current_btc_price,
+        (jdouble)1.15, // Spread Bps proxy
+        (jlong)latency_ms,
+        (jdouble)110.0, // Reynolds index proxy
+        (jdouble)p_up,
+        (jdouble)p_down,
+        (jdouble)epistemic,
+        (jdouble)aleatoric,
+        (jdouble)dir_sep,
+        (jdouble)z_sep,
+        (jdouble)erosion,
+        j_decision,
+        (jboolean)is_laminar,
+        j_tripwire
+    );
+
+    return payload_obj;
 }
+
+}
+

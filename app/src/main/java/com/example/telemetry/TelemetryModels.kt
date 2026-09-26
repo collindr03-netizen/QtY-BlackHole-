@@ -98,3 +98,25 @@ data class AuditRecord(
     val directionalSeparation: Double,
     val activeTripwires: List<String>
 )
+
+// ==========================================
+// HIGH-PERFORMANCE IMMUTABLE NDK PAYLOAD
+// ==========================================
+data class TelemetryPayload(
+    val timestampNs: Long,
+    val btcPrice: Double,
+    val spreadBps: Double,
+    val latencyMs: Long,
+    val reynoldsIndex: Double,
+    val pUp: Double,
+    val pDown: Double,
+    val epistemicUncertainty: Double,
+    val aleatoricUncertainty: Double,
+    val directionalSeparation: Double,
+    val confidenceRatio: Double,
+    val decisionErosion: Double,
+    val decisionState: String,
+    val isLaminar: Boolean,
+    val activeTripwire: String
+)
+

@@ -127,15 +127,21 @@ fun TelemetryHUD(
         },
         containerColor = DarkCarbon
     ) { paddingValues ->
-        if (isTablet) {
-            // Wide-screen grid/column layout
-            Row(
-                modifier = modifier
-                    .padding(paddingValues)
-                    .fillMaxSize()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
+            TopStatusBar(derived = derived, connections = connections)
+
+            if (isTablet) {
+                // Wide-screen grid/column layout
+                Row(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                 // Left Column: Core HUD & Real-time Telemetry (60% width)
                 Column(
                     modifier = Modifier
@@ -228,7 +234,6 @@ fun TelemetryHUD(
             // Mobile-first scrollable stack
             LazyColumn(
                 modifier = modifier
-                    .padding(paddingValues)
                     .fillMaxSize()
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -310,6 +315,7 @@ fun TelemetryHUD(
                     }
                 }
             }
+        }
         }
 
         // Engine Details Dialog
@@ -495,6 +501,7 @@ fun SeparationBarSection(state: DualAiState?, targetCrit: Double) {
     val dirSeparation = state?.directionalSeparation ?: 0.0
     val activeSignal = state?.decisionState ?: "NO-TRADE"
     val activeTripwire = state?.tripwireState ?: "SYSTEM_NOMINAL"
+    val erosion = state?.decisionErosion ?: 1.0
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -519,7 +526,11 @@ fun SeparationBarSection(state: DualAiState?, targetCrit: Double) {
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (dirSeparation >= 0) CyberGreen else CyberRed
+                    color = when {
+                        activeSignal == "BUY-LONG" -> CyberGreen
+                        activeSignal == "SELL-SHORT" -> CyberRed
+                        else -> MutedSlate
+                    }
                 )
             }
 
@@ -553,11 +564,7 @@ fun SeparationBarSection(state: DualAiState?, targetCrit: Double) {
                         .background(CyberAmber)
                 )
 
-                // Separation fill bar
-                val alignment = if (dirSeparation >= 0) Alignment.CenterStart else Alignment.CenterEnd
-                val widthFactor = Math.abs(dirSeparation).coerceIn(0.0, 1.0).toFloat()
-                val barColor = if (dirSeparation >= 0) CyberGreen else CyberRed
-
+                // Separation fill bar with dynamic colors (Green for Buy, Red for Sell, Gray/Muted for No-Trade)
                 Row(
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -595,6 +602,82 @@ fun SeparationBarSection(state: DualAiState?, targetCrit: Double) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            // 4. Decision erosion progress indicator
+            if (activeSignal != "NO-TRADE") {
+                Column(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "SIGNAL VALIDITY EROSION:",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 9.sp,
+                            color = MutedSlate,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = String.format("%.1f%%", erosion * 100),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            color = CyberAmber,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { erosion.toFloat().coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = CyberAmber,
+                        trackColor = DarkCarbon
+                    )
+                }
+            }
+
+            // 5. Fail-closed tripwire alerts for packet drops or wide spreads
+            if (activeTripwire != "SYSTEM_NOMINAL") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(CyberRed.copy(alpha = 0.15f))
+                        .border(1.dp, CyberRed, RoundedCornerShape(4.dp))
+                        .padding(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Tripwire Alert",
+                            tint = CyberRed,
+                            size = 18.dp
+                        )
+                        Column {
+                            Text(
+                                text = "TRIPWIRE FAIL-CLOSED ACTIVATED",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CyberRed
+                            )
+                            Text(
+                                text = "Reason: $activeTripwire - Order placement suppressed.",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 9.sp,
+                                color = BrightSilver
+                            )
+                        }
+                    }
+                }
+            }
+
             // Bottom descriptive metrics
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -616,7 +699,7 @@ fun SeparationBarSection(state: DualAiState?, targetCrit: Double) {
                         color = when (activeSignal) {
                             "BUY-LONG" -> CyberGreen
                             "SELL-SHORT" -> CyberRed
-                            else -> CyberAmber
+                            else -> MutedSlate
                         },
                         modifier = Modifier.testTag("submit_button")
                     )
@@ -643,6 +726,7 @@ fun SeparationBarSection(state: DualAiState?, targetCrit: Double) {
         }
     }
 }
+
 
 @Composable
 fun RealtimeChartsSection(
@@ -1385,3 +1469,84 @@ fun Icon(
         tint = tint
     )
 }
+
+@Composable
+fun TopStatusBar(derived: DerivedFeatures?, connections: List<ConnectionState>) {
+    val btcPrice = derived?.microPrice ?: 96450.0
+    val spreadBps = 1.15
+    val avgLatency = connections.map { it.latencyMs }.average().let { if (it.isNaN()) 10.0 else it }.toInt()
+    val reynolds = derived?.reynoldsNumber ?: 0.0
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = DeepSlate),
+        border = BorderStroke(1.dp, MutedSlate.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StatusBarItem(
+                label = "BTC-PERP PRICE",
+                value = String.format("$%.2f", btcPrice),
+                color = CyberBlue,
+                icon = Icons.Default.AttachMoney
+            )
+            StatusBarItem(
+                label = "BID-ASK SPREAD",
+                value = String.format("%.2f bps", spreadBps),
+                color = CyberAmber,
+                icon = Icons.Default.SwapHoriz
+            )
+            StatusBarItem(
+                label = "NET LATENCY",
+                value = "$avgLatency ms",
+                color = if (avgLatency > 25) CyberRed else CyberGreen,
+                icon = Icons.Default.NetworkCell
+            )
+            StatusBarItem(
+                label = "REYNOLDS INDEX",
+                value = String.format("%.1f", reynolds),
+                color = if (reynolds > 320.0) CyberRed else CyberGreen,
+                icon = Icons.Default.Waves
+            )
+        }
+    }
+}
+
+@Composable
+fun StatusBarItem(
+    label: String,
+    value: String,
+    color: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(imageVector = icon, contentDescription = label, tint = color, size = 18.dp)
+        Column {
+            Text(
+                text = label,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 9.sp,
+                color = MutedSlate,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = value,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 13.sp,
+                color = color,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
