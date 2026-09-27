@@ -390,6 +390,20 @@ class TelemetryEngine private constructor() {
         if (isDataIntegrityFailed) {
             tripwire = "DATA_INTEGRITY_FAIL_CLOSED"
             finalDecision = "NO-TRADE"
+            // Section 7 Directive 4: Deterministic JSON output on data integrity failure
+            val jsonOutput = """
+                {
+                  "decision_state": "NO-TRADE",
+                  "tripwire": "DATA_INTEGRITY_FAIL_CLOSED",
+                  "actionable": false
+                }
+            """.trimIndent()
+            Log.e("audit", jsonOutput)
+        }
+
+        // Increment active trade count in current period if signal is generated
+        if (finalDecision == "BUY-LONG" || finalDecision == "SELL-SHORT") {
+            activeTradesInPeriod++
         }
 
         // Limit the scalper trade rate dynamically to keep inside safe thresholds
@@ -401,6 +415,8 @@ class TelemetryEngine private constructor() {
         if (activeTradesInPeriod > 10) {
             tripwire = "RATE_LIMIT_EXCEEDED"
             finalDecision = "NO-TRADE"
+            // Log rate limit exceeded message matching log error patterns
+            Log.e("audit", "rate limit exceeded")
         }
 
         val dualAi = DualAiState(

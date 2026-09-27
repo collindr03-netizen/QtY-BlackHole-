@@ -60,6 +60,13 @@ abstract class TournamentDatabase : RoomDatabase() {
                     TournamentDatabase::class.java,
                     "tournament_database"
                 )
+                .addCallback(object : RoomDatabase.Callback() {
+                    override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        // Section 7: Enforce direct transaction journal mode to avoid WAL auto-checkpoint timeout bugs
+                        db.query("PRAGMA journal_mode = DELETE;").close()
+                    }
+                })
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

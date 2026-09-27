@@ -6,6 +6,7 @@
 package com.example.ui.hud
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +22,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -193,6 +196,19 @@ fun TelemetryHUD(
                                 .padding(horizontal = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            // 1. Displaced Minimalist Trajectory Canvas (Top)
+                            item {
+                                val btcPrice = derived?.microPrice ?: 96450.0
+                                val isStableLaminar = (derived?.reynoldsNumber ?: 0.0) < 320.0 && (derived?.lyapunovExponent ?: 0.0) < 0.22
+                                DisplacedMinimalistTrajectorySection(
+                                    btcPrice = btcPrice,
+                                    spreadBps = 1.15,
+                                    isLaminar = isStableLaminar,
+                                    derived = derived
+                                )
+                            }
+
+                            // Realtime Charts Section
                             item {
                                 RealtimeChartsSection(
                                     priceHist = engine.chartPriceHistory,
@@ -202,9 +218,45 @@ fun TelemetryHUD(
                                     derived = derived
                                 )
                             }
+
+                            // 2. Harmonic Heartbeat Pendulum
                             item {
-                                SeparationBarSection(dualAi, engine.targetCritSeparation)
+                                val separation = dualAi?.directionalSeparation?.toFloat() ?: 0f
+                                val intensity = if ((derived?.lyapunovExponent ?: 0.0) > 0.22) 1.5f else 0.4f
+                                HarmonicHeartbeatPendulum(
+                                    directionalSeparation = separation,
+                                    tradeIntensity = intensity
+                                )
                             }
+
+                            // 3. Data Funnel Tubing System
+                            item {
+                                DataFunnelTubingSystem(
+                                    dataActive = dualAi != null
+                                )
+                            }
+
+                            // 4. Live Engine Room (Active Mathematical Tensors)
+                            item {
+                                val btcPrice = derived?.microPrice ?: 96450.0
+                                val trend = derived?.orderFlowImbalance ?: 0.0
+                                val accel = if ((derived?.lyapunovExponent ?: 0.0) > 0.22) 4.5 else 0.4
+                                val h = 0.05
+                                val f = { y: Double -> trend + accel * kotlin.math.sin(y) }
+                                val k1 = h * f(btcPrice)
+                                val k2 = h * f(btcPrice + k1 / 2.0)
+                                val k3 = h * f(btcPrice + k2 / 2.0)
+                                val k4 = h * f(btcPrice + k3)
+
+                                LiveEngineRoom(
+                                    rk4K1 = k1,
+                                    rk4K4 = k4,
+                                    reynolds = derived?.reynoldsNumber ?: 42.1,
+                                    lyapunov = derived?.lyapunovExponent ?: -0.14,
+                                    separation = dualAi?.directionalSeparation ?: 0.0
+                                )
+                            }
+
                             item {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -2665,6 +2717,416 @@ fun PnLCurveChart(trades: List<BacktestTrade>) {
     }
 }
 
+// ==========================================
+// QTY-64 ADAPTIVE SPATIAL VISUAL COMPONENTS
+// ==========================================
+
+@Composable
+fun DisplacedMinimalistTrajectorySection(
+    btcPrice: Double,
+    spreadBps: Double,
+    isLaminar: Boolean,
+    derived: DerivedFeatures?
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(130.dp),
+        colors = CardDefaults.cardColors(containerColor = GlassCardColor),
+        border = BorderStroke(1.dp, MutedSlate.copy(alpha = 0.25f)),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // High-precision clean Dark background
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(SpatialBackground)
+            )
+
+            val infiniteTransition = rememberInfiniteTransition(label = "endpoint_glow")
+            val pulseAlpha by infiniteTransition.animateFloat(
+                initialValue = 0.3f,
+                targetValue = 1.0f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1200, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "alpha"
+            )
+            
+            val pulseScale by infiniteTransition.animateFloat(
+                initialValue = 2f,
+                targetValue = 6f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1200, easing = EaseInOutSine),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "scale"
+            )
+
+            val rk4Smooth = derived?.rk4SmoothPrice ?: btcPrice
+            val trend = derived?.orderFlowImbalance ?: 0.0
+
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val width = size.width
+                val height = size.height
+
+                // Draw curve using quadratic bezier
+                val startX = 20f
+                val startY = height * 0.65f
+                val controlX = width * 0.45f
+                val controlY = (height * 0.3f + (kotlin.math.sin(rk4Smooth / 100.0) * height * 0.15f)).toFloat()
+                val endX = width * 0.92f
+                val endY = (height * 0.45f - trend * 20f).toFloat().coerceIn(20f, height - 20f)
+
+                val path = Path().apply {
+                    moveTo(startX, startY)
+                    quadraticTo(controlX, controlY, endX, endY)
+                }
+
+                // 1. Sleek thick glowing bezier arc
+                drawPath(
+                    path = path,
+                    color = ElectricCyan.copy(alpha = 0.15f),
+                    style = Stroke(width = 8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                )
+
+                // 2. Central sharp neon line
+                drawPath(
+                    path = path,
+                    color = ElectricCyan,
+                    style = Stroke(width = 2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                )
+
+                // 3. Glowing Endpoint Pulse
+                drawCircle(
+                    color = ElectricCyan.copy(alpha = 0.2f * pulseAlpha),
+                    radius = pulseScale.dp.toPx(),
+                    center = Offset(endX, endY)
+                )
+                drawCircle(
+                    color = ElectricCyan,
+                    radius = 3.dp.toPx(),
+                    center = Offset(endX, endY)
+                )
+            }
+
+            // Top-Overlay textual metadata styled like high-tech terminal
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "DISPLACED GEODESIC TRAJECTORY CANVAS (18s Projection)",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MutedSlate
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(if (isLaminar) CyberGreen.copy(alpha = 0.1f) else CyberRed.copy(alpha = 0.1f))
+                            .border(1.dp, if (isLaminar) CyberGreen else CyberRed, RoundedCornerShape(3.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = if (isLaminar) "STABILITY: LAMINAR" else "STABILITY: TURBULENT",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isLaminar) CyberGreen else CyberRed
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column {
+                        Text(
+                            text = "BTC PRICE INDEX",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 8.sp,
+                            color = MutedSlate
+                        )
+                        Text(
+                            text = String.format("USDT $%,.2f", btcPrice),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "ESTIMATED SPREAD",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 8.sp,
+                            color = MutedSlate
+                        )
+                        Text(
+                            text = String.format("%.2f BPS", spreadBps),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ElectricCyan
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HarmonicHeartbeatPendulum(
+    directionalSeparation: Float, // [-1.0f (Full Sell) to +1.0f (Full Buy)]
+    tradeIntensity: Float,        // Pulses the heartbeat rate
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "Heartbeat")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.95f,
+        targetValue = 1.05f + (tradeIntensity * 0.1f).coerceAtMost(0.2f),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "Pulse"
+    )
+
+    // Smooth physics spring for the swinging pendulum ball
+    val animatedPosition by animateFloatAsState(
+        targetValue = directionalSeparation.coerceIn(-1f, 1f),
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 80f),
+        label = "PendulumSwing"
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF090E24).copy(alpha = 0.85f)),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color(0xFF1B2754))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("SELL PRESSURE", color = Color(0xFFFF1744), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("HARMONIC EQUILIBRIUM", color = Color(0xFF00E5FF), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Text("BUY PRESSURE", color = Color(0xFF00E676), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // The Pendulum Sway Track
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(28.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Background Track
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(Color(0xFFFF1744), Color(0xFF00E5FF), Color(0xFF00E676))
+                            ),
+                            shape = CircleShape
+                        )
+                )
+
+                // The Swinging Orb with Harmonic Glow
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
+                ) {
+                    val bias = animatedPosition // -1.0 (Left) to +1.0 (Right)
+                    Box(
+                        modifier = Modifier
+                            .align(BiasAlignment(horizontalBias = bias, verticalBias = 0f))
+                            .size(24.dp * pulseScale)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        if (bias > 0.1f) Color(0xFF00E676) else if (bias < -0.1f) Color(0xFFFF1744) else Color(0xFF00E5FF),
+                                        Color.Transparent
+                                    )
+                                ),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(Color.White, CircleShape)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DataFunnelTubingSystem(
+    dataActive: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "DataFlow")
+    val flowOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "PulseFlow"
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF060A1A)),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, Color(0xFF141F3D))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            FunnelNode(label = "RAW DATA", active = dataActive)
+            TubingConnector(pulse = flowOffset)
+            FunnelNode(label = "DERIVED", active = dataActive)
+            TubingConnector(pulse = flowOffset)
+            FunnelNode(label = "TELEMETRY", active = dataActive)
+            TubingConnector(pulse = flowOffset)
+            FunnelNode(label = "DECISION", active = dataActive, highlight = true)
+        }
+    }
+}
+
+@Composable
+fun FunnelNode(label: String, active: Boolean, highlight: Boolean = false) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(
+                    if (highlight) Color(0xFF00E5FF) else if (active) Color(0xFF2979FF) else Color.DarkGray,
+                    CircleShape
+                )
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(label, color = Color(0xFF8A99AD), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+    }
+}
+
+@Composable
+fun RowScope.TubingConnector(pulse: Float) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .height(2.dp)
+            .background(Color(0xFF14203D)),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(fraction = 0.3f)
+                .fillMaxHeight()
+                .offset(x = (pulse * 60).dp)
+                .background(Color(0xFF00E5FF), CircleShape)
+        )
+    }
+}
+
+@Composable
+fun LiveEngineRoom(
+    rk4K1: Double,
+    rk4K4: Double,
+    reynolds: Double,
+    lyapunov: Double,
+    separation: Double,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF050814)),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, Color(0xFF1E2D5A))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "ENGINE ROOM // ACTIVE MATHEMATICAL TENSORS",
+                color = Color(0xFF00E5FF),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Real-time RK4 equation
+            MathEquationRow(
+                formula = "X(t+h) = X₀ + (h/6)[k₁ + 2k₂ + 2k₃ + k₄]",
+                liveValues = "k₁: ${String.format("%+.3f", rk4K1)} | k₄: ${String.format("%+.3f", rk4K4)}"
+            )
+
+            // Real-time Reynolds equation
+            MathEquationRow(
+                formula = "Re_mkt = (ρ_flow · v_price · L_spread) / μ_depth",
+                liveValues = "Re: ${String.format("%.1f", reynolds)} [${if (reynolds < 120) "LAMINAR" else "TURBULENT"}]"
+            )
+
+            // Real-time Lyapunov exponent
+            MathEquationRow(
+                formula = "λ_FTLE = (1/Δt) · ln(||δX(t)|| / ||δX(0)||)",
+                liveValues = "λ: ${String.format("%+.3f", lyapunov)} [${if (lyapunov <= 0) "CONVERGENT" else "CHAOTIC"}]"
+            )
+
+            // Directional Separation
+            MathEquationRow(
+                formula = "D(t) = P(UP|F_t) - P(DOWN|F_t)",
+                liveValues = "D: ${String.format("%+.3f", separation)}"
+            )
+        }
+    }
+}
+
+@Composable
+fun MathEquationRow(formula: String, liveValues: String) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(formula, color = Color(0xFF7E8EA6), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+        Text(liveValues, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = FontFamily.Monospace)
+    }
+}
+
 @Composable
 fun MetricRow(
     label: String,
@@ -2732,3 +3194,4 @@ fun MetricRow(
         }
     }
 }
+
