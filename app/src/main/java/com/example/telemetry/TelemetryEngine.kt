@@ -21,6 +21,7 @@ class TelemetryEngine private constructor() {
     private var tickCount = 0L
     private var activeTradesInPeriod = 0
     private var periodStartTime = System.currentTimeMillis()
+    private var lastDecisionState = "NO-TRADE"
 
     // Configuration states (interactive)
     var targetCritSeparation = 0.70
@@ -401,8 +402,8 @@ class TelemetryEngine private constructor() {
             Log.e("audit", jsonOutput)
         }
 
-        // Increment active trade count in current period if signal is generated
-        if (finalDecision == "BUY-LONG" || finalDecision == "SELL-SHORT") {
+        // Increment active trade count in current period if signal is generated (state transition)
+        if ((finalDecision == "BUY-LONG" || finalDecision == "SELL-SHORT") && finalDecision != lastDecisionState) {
             activeTradesInPeriod++
         }
 
@@ -418,6 +419,8 @@ class TelemetryEngine private constructor() {
             // Log rate limit exceeded message matching log error patterns
             Log.e("audit", "rate limit exceeded")
         }
+
+        lastDecisionState = finalDecision
 
         val dualAi = DualAiState(
             pUp = rawUpProb,
